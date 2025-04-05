@@ -1,56 +1,82 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Callout from '../extensions/Callout.jsx';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 const Editor = () => {
   const [editors, setEditors] = useState([]);
-  const [activeCallout, setActiveCallout] = useState(null); // Track the currently used callout type
+  const [activeCallout, setActiveCallout] = useState(null);
+  const [activeEditorId, setActiveEditorId] = useState(null); // NEW
 
-  // Function to create a new text editor
   const addTextEditor = () => {
-    setEditors([...editors, { id: Date.now(), type: 'text' }]); // 'text' type for normal text area
+    setEditors([...editors, { id: Date.now(), type: 'text' }]);
   };
 
-  // Function to create a new callout editor (initially with default color)
   const addCalloutEditor = () => {
-    setEditors([...editors, { id: Date.now(), type: 'default' }]); // 'default' for callout
+    const id = Date.now();
+    setEditors([...editors, { id, type: 'default' }]);
+    setActiveEditorId(id); // Set as active when created
   };
 
-  // Function to delete an editor
   const deleteEditor = (id) => {
     setEditors(editors.filter((editor) => editor.id !== id));
   };
 
-  // Function to change the callout type and update the activeCallout state
   const setCalloutType = (id, type) => {
     setEditors(editors.map((editor) => (editor.id === id ? { ...editor, type } : editor)));
-    setActiveCallout(type); // Update the active callout type
+    setActiveCallout(type);
   };
+
+  // Handle Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!e.ctrlKey || activeEditorId === null) return;
+
+      if (e.key === 'f') {
+        e.preventDefault();
+        setCalloutType(activeEditorId, 'info');
+      } else if (e.key === 's') {
+        e.preventDefault();
+        setCalloutType(activeEditorId, 'tip');
+      } else if (e.key === 'd') {
+        e.preventDefault();
+        setCalloutType(activeEditorId, 'alert');
+      } else if (e.key === 'a') {
+        e.preventDefault();
+        setCalloutType(activeEditorId, 'warning');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeEditorId, setCalloutType]);
 
   return (
     <div className="flex flex-col bg-gray-900 min-h-screen w-screen p-4 items-center">
-      {/* Heading at the top */}
       <h1 className="text-white text-3xl font-bold mb-4">Callout Demo</h1>
 
-      {/* Display the current callout type */}
       {activeCallout && (
         <div className="text-white text-center mb-2">
           <strong>Current Callout:</strong> {activeCallout}
         </div>
       )}
 
-      {/* Dynamic Editors Container */}
       <div className="flex flex-col items-center w-full gap-4">
         {editors.map(({ id, type }) => (
-          <TextEditor key={id} id={id} type={type} setCalloutType={setCalloutType} deleteEditor={deleteEditor} />
+          <TextEditor
+            key={id}
+            id={id}
+            type={type}
+            setCalloutType={setCalloutType}
+            deleteEditor={deleteEditor}
+            setActiveEditorId={setActiveEditorId} // pass down
+          />
         ))}
       </div>
 
-      {/* Buttons should always appear below the last editor */}
       <div className="flex justify-center gap-4 mt-4 w-full">
         <Button variant="contained" onClick={addCalloutEditor} startIcon={<AddIcon />}>
           Callout
@@ -63,16 +89,17 @@ const Editor = () => {
   );
 };
 
-// Component for each text area with callouts
-const TextEditor = ({ id, type, setCalloutType, deleteEditor }) => {
+// Editor Component
+const TextEditor = ({ id, type, setCalloutType, deleteEditor, setActiveEditorId }) => {
   const editor = useEditor({
     extensions: [StarterKit, Callout],
     content: '',
+    onUpdate: () => setActiveEditorId(id),
   });
 
   const bgColors = {
-    text: 'bg-gray-800 text-white', // Normal text area
-    default: 'bg-gray-800 text-white', // Default callout color
+    text: 'bg-gray-800 text-white',
+    default: 'bg-gray-800 text-white',
     info: 'bg-blue-500 text-white',
     tip: 'bg-green-500 text-white',
     warning: 'bg-yellow-500 text-black',
@@ -80,10 +107,12 @@ const TextEditor = ({ id, type, setCalloutType, deleteEditor }) => {
   };
 
   return (
-    <div className={`relative w-3/4 p-4 rounded ${bgColors[type]}`}>
+    <div
+      className={`relative w-3/4 p-4 rounded ${bgColors[type]}`}
+      onClick={() => setActiveEditorId(id)} // Track focus
+    >
       <EditorContent editor={editor} className="w-full focus:outline-none" />
 
-      {/* Callout Buttons (Only for Callout Editors) */}
       {type !== 'text' && (
         <div className="flex gap-2 mt-2">
           <button className={`px-3 py-1 rounded ${type === 'info' ? 'bg-blue-700' : 'bg-blue-500'}`} onClick={() => setCalloutType(id, 'info')}>ℹ️ Info</button>
@@ -93,7 +122,6 @@ const TextEditor = ({ id, type, setCalloutType, deleteEditor }) => {
         </div>
       )}
 
-      {/* Delete Button */}
       <div className="absolute top-2 right-2">
         <Button variant="contained" color="error" size="small" onClick={() => deleteEditor(id)}>
           <DeleteIcon />
