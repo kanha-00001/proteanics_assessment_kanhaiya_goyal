@@ -1,55 +1,97 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import React from 'react';
 
-export default Node.create({
+// React component to render the callout block
+const CalloutComponent = (props) => {
+  const { node, updateAttributes } = props;
+  const { type = 'info', level = 0 } = node.attrs;
+
+  const styles = {
+    info: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-500',
+      text: 'text-blue-900',
+    },
+    tip: {
+      bg: 'bg-green-50',
+      border: 'border-green-500',
+      text: 'text-green-900',
+    },
+    warning: {
+      bg: 'bg-yellow-50',
+      border: 'border-yellow-500',
+      text: 'text-yellow-900',
+    },
+    alert: {
+      bg: 'bg-red-50',
+      border: 'border-red-500',
+      text: 'text-red-900',
+    },
+  };
+
+  const current = styles[type] || styles.info;
+
+  const types = ['info', 'tip', 'warning', 'alert'];
+
+  return (
+    <NodeViewWrapper
+      className={`rounded-md border-l-4 p-4 mb-2 relative ${current.bg} ${current.border} ${current.text}`}
+      style={{ marginLeft: `${level * 20}px` }}
+    >
+      <div className="font-semibold capitalize mb-2">{type} Callout</div>
+      
+      <div className="absolute top-1 right-2 flex gap-1">
+        {types.map((t) => (
+          <button
+            key={t}
+            onClick={() => updateAttributes({ type: t })}
+            className={`text-xs px-2 py-1 rounded ${
+              type === t ? 'bg-black text-white' : 'bg-white text-black'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <NodeViewContent as="div" className="prose prose-sm" />
+    </NodeViewWrapper>
+  );
+};
+
+
+// Callout node extension
+const Callout = Node.create({
   name: 'callout',
+
   group: 'block',
-  content: 'inline*',
-  defining: true,
+
+  content: 'block+',
 
   addAttributes() {
     return {
-      calloutType: {
+      type: {
         default: 'info',
-        parseHTML: (element) => element.getAttribute('data-type') || 'info',
-        renderHTML: (attributes) => ({
-          'data-type': attributes.calloutType,
-          class: `p-3 rounded ${getCalloutColor(attributes.calloutType)}`,  // Correct dynamic class assignment
-        }),
+      },
+      level: {
+        default: 0,
       },
     };
   },
 
   parseHTML() {
-    return [{ tag: 'callout[data-type]' }];
+    return [{ tag: 'div[data-callout]' }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['callout', mergeAttributes(HTMLAttributes), 0];
+    return ['div', mergeAttributes(HTMLAttributes, { 'data-callout': 'true' }), 0];
   },
 
-  addCommands() {
-    return {
-      toggleCallout:
-        (calloutType) =>
-        ({ commands }) => {
-          return commands.updateAttributes('callout', { calloutType });
-        },
-    };
+  addNodeView() {
+    return ReactNodeViewRenderer(CalloutComponent);
   },
 });
 
-// ✅ Function to return Tailwind color classes dynamically
-const getCalloutColor = (type) => {
-  switch (type) {
-    case 'info':
-      return 'bg-blue-200 text-blue-900 border-l-4 border-blue-500';
-    case 'tip':
-      return 'bg-green-200 text-green-900 border-l-4 border-green-500';
-    case 'warning':
-      return 'bg-yellow-200 text-yellow-900 border-l-4 border-yellow-500';
-    case 'alert':
-      return 'bg-red-200 text-red-900 border-l-4 border-red-500';
-    default:
-      return 'bg-gray-200 text-gray-900 border-l-4 border-gray-500';
-  }
-};
+export default Callout;

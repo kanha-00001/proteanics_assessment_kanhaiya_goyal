@@ -9,7 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 const Editor = () => {
   const [editors, setEditors] = useState([]);
   const [activeCallout, setActiveCallout] = useState(null);
-  const [activeEditorId, setActiveEditorId] = useState(null); // NEW
+  const [activeEditorId, setActiveEditorId] = useState(null);
 
   const addTextEditor = () => {
     setEditors([...editors, { id: Date.now(), type: 'text' }]);
@@ -18,7 +18,7 @@ const Editor = () => {
   const addCalloutEditor = () => {
     const id = Date.now();
     setEditors([...editors, { id, type: 'default' }]);
-    setActiveEditorId(id); // Set as active when created
+    setActiveEditorId(id);
   };
 
   const deleteEditor = (id) => {
@@ -30,7 +30,7 @@ const Editor = () => {
     setActiveCallout(type);
   };
 
-  // Handle Keyboard Shortcuts
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!e.ctrlKey || activeEditorId === null) return;
@@ -52,7 +52,7 @@ const Editor = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeEditorId, setCalloutType]);
+  }, [activeEditorId]);
 
   return (
     <div className="flex flex-col bg-gray-900 min-h-screen w-screen p-4 items-center">
@@ -72,7 +72,7 @@ const Editor = () => {
             type={type}
             setCalloutType={setCalloutType}
             deleteEditor={deleteEditor}
-            setActiveEditorId={setActiveEditorId} // pass down
+            setActiveEditorId={setActiveEditorId}
           />
         ))}
       </div>
@@ -106,19 +106,40 @@ const TextEditor = ({ id, type, setCalloutType, deleteEditor, setActiveEditorId 
     alert: 'bg-red-500 text-white',
   };
 
+  const insertNestedCallout = () => {
+    if (!editor) return;
+
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: 'callout',
+        attrs: { type: 'info', level: 1 },
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Nested callout...' }] }],
+      })
+      .run();
+  };
+
   return (
     <div
       className={`relative w-3/4 p-4 rounded ${bgColors[type]}`}
-      onClick={() => setActiveEditorId(id)} // Track focus
+      onClick={() => setActiveEditorId(id)}
     >
       <EditorContent editor={editor} className="w-full focus:outline-none" />
 
       {type !== 'text' && (
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-2 flex-wrap">
           <button className={`px-3 py-1 rounded ${type === 'info' ? 'bg-blue-700' : 'bg-blue-500'}`} onClick={() => setCalloutType(id, 'info')}>ℹ️ Info</button>
           <button className={`px-3 py-1 rounded ${type === 'tip' ? 'bg-green-700' : 'bg-green-500'}`} onClick={() => setCalloutType(id, 'tip')}>✔️ Tip</button>
           <button className={`px-3 py-1 rounded ${type === 'warning' ? 'bg-yellow-700' : 'bg-yellow-500'}`} onClick={() => setCalloutType(id, 'warning')}>⚠️ Warning</button>
           <button className={`px-3 py-1 rounded ${type === 'alert' ? 'bg-red-700' : 'bg-red-500'}`} onClick={() => setCalloutType(id, 'alert')}>🛡️ Alert</button>
+
+          <button
+            className="px-3 py-1 rounded bg-purple-500 text-white"
+            onClick={insertNestedCallout}
+          >
+            ➕ Nested Callout
+          </button>
         </div>
       )}
 
