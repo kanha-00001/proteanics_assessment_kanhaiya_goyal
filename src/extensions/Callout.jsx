@@ -1,11 +1,9 @@
 import { Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer } from '@tiptap/react';
-import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import React from 'react';
 
-// React component to render the callout block
 const CalloutComponent = (props) => {
-  const { node, updateAttributes } = props;
+  const { node, updateAttributes, getPos, editor } = props;
   const { type = 'info', level = 0 } = node.attrs;
 
   const styles = {
@@ -32,37 +30,57 @@ const CalloutComponent = (props) => {
   };
 
   const current = styles[type] || styles.info;
-
   const types = ['info', 'tip', 'warning', 'alert'];
+
+  const deleteThisCallout = () => {
+    const pos = getPos?.();
+    if (typeof pos === 'number') {
+      editor.commands.command(({ tr }) => {
+        tr.delete(pos, pos + node.nodeSize);
+        return true;
+      });
+    }
+  };
 
   return (
     <NodeViewWrapper
-      className={`rounded-md border-l-4 p-4 mb-2 relative ${current.bg} ${current.border} ${current.text}`}
-      style={{ marginLeft: `${level * 20}px` }}
+      className={`relative rounded-md border-l-4 p-4 mb-2 ${current.bg} ${current.border} ${current.text}`}
+      style={{
+        marginLeft: `${level * 20}px`,
+        zIndex: 100 - level, // higher z-index for outer callouts
+        position: 'relative',
+      }}
     >
-      <div className="font-semibold capitalize mb-2">{type} Callout</div>
-      
-      <div className="absolute top-1 right-2 flex gap-1">
+      <div
+        className="absolute top-2 right-2 flex gap-2"
+        style={{ zIndex: 100 - level }}
+      >
         {types.map((t) => (
           <button
             key={t}
             onClick={() => updateAttributes({ type: t })}
-            className={`text-xs px-2 py-1 rounded ${
+            className={`text-xs px-2 py-1 rounded shadow ${
               type === t ? 'bg-black text-white' : 'bg-white text-black'
             }`}
           >
             {t}
           </button>
         ))}
+        <button
+          onClick={deleteThisCallout}
+          className="text-xs text-red-600 hover:text-red-800 bg-white px-2 py-1 rounded shadow"
+        >
+          🗑 Delete
+        </button>
       </div>
 
+      <div className="font-semibold capitalize mb-2 mt-8">{type} Callout</div>
       <NodeViewContent as="div" className="prose prose-sm" />
     </NodeViewWrapper>
   );
 };
 
 
-// Callout node extension
 const Callout = Node.create({
   name: 'callout',
 
